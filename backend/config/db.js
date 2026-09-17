@@ -9,23 +9,39 @@ const sanitize = (val) => {
 };
 
 const getPoolConfig = () => {
-  // Support MYSQL_PRIVATE_URL, MYSQL_URL, and DATABASE_URL
   const connectionUrl = 
     sanitize(process.env.MYSQL_PRIVATE_URL) || 
     sanitize(process.env.MYSQL_URL) || 
     sanitize(process.env.DATABASE_URL);
 
   if (connectionUrl) {
-    console.log('🔌 Connecting using MySQL private/public connection URL...');
-    return {
-      uri: connectionUrl,
-      waitForConnections: true,
-      connectionLimit: 10,
-      queueLimit: 0,
-      ssl: {
-        rejectUnauthorized: false,
-      },
-    };
+    try {
+      const parsed = new URL(connectionUrl);
+      const host = parsed.hostname;
+      const port = parseInt(parsed.port, 10) || 3306;
+      const user = decodeURIComponent(parsed.username || 'root');
+      const password = decodeURIComponent(parsed.password || '');
+      const database = decodeURIComponent(parsed.pathname.replace(/^\//, '') || 'railway');
+
+      console.log(`🔌 Connecting to MySQL at host: ${host}, port: ${port}, database: ${database}, user: ${user}`);
+
+      return {
+        host,
+        port,
+        user,
+        password,
+        database,
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0,
+        connectTimeout: 20000,
+        ssl: {
+          rejectUnauthorized: false,
+        },
+      };
+    } catch (e) {
+      console.warn('Could not parse connectionUrl with URL parser, using direct variables:', e.message);
+    }
   }
 
   const host = sanitize(process.env.MYSQLHOST) || sanitize(process.env.DB_HOST) || 'localhost';
@@ -45,6 +61,7 @@ const getPoolConfig = () => {
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
+    connectTimeout: 20000,
     ssl: {
       rejectUnauthorized: false,
     },
@@ -90,14 +107,14 @@ async function initDB() {
         VALUES 
           ('Set up live Railway database', 'Connected live MySQL database to backend', 'completed', 'high'),
           ('Test API endpoints live', 'Verify GET, POST, PUT, DELETE /api/tasks with live MySQL', 'in_progress', 'high'),
-          ('Deploy project to cloud', 'Deploy backend to Railway/Render and frontend to Vercel', 'pending', 'medium');
+          ('Deploy project to cloud', 'Deploy backend to Railway and frontend to Vercel', 'pending', 'medium');
       `);
       console.log('🌱 Seeded sample tasks into live MySQL database.');
     }
 
     console.log('✅ Live MySQL database schema verified & ready.');
   } catch (err) {
-    console.warn('⚠️ MySQL connection/initialization note:', err.message);
+    console.warn('⚠️ MySQL connection/initialization note:', err.message || err.code || err);
   }
 }
 
