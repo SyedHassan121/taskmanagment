@@ -12,8 +12,9 @@ const getAllTasks = async (req, res) => {
     `);
     res.json({ success: true, count: rows.length, data: rows });
   } catch (err) {
-    console.error('Error in getAllTasks:', err.message);
-    res.status(500).json({ success: false, error: err.message });
+    const errorMsg = err.message || err.code || String(err);
+    console.error('Error in getAllTasks:', errorMsg);
+    res.status(500).json({ success: false, error: errorMsg });
   }
 };
 
@@ -41,8 +42,9 @@ const createTask = async (req, res) => {
       data: newRows[0],
     });
   } catch (err) {
-    console.error('Error in createTask:', err.message);
-    res.status(500).json({ success: false, error: err.message });
+    const errorMsg = err.message || err.code || String(err);
+    console.error('Error in createTask:', errorMsg);
+    res.status(500).json({ success: false, error: errorMsg });
   }
 };
 
@@ -55,7 +57,6 @@ const updateTask = async (req, res) => {
   try {
     const pool = getPool();
 
-    // Check if task exists
     const [checkRows] = await pool.query('SELECT * FROM tasks WHERE id = ?', [id]);
     if (checkRows.length === 0) {
       return res.status(404).json({ success: false, error: 'Task not found' });
@@ -80,8 +81,9 @@ const updateTask = async (req, res) => {
       data: updatedRows[0],
     });
   } catch (err) {
-    console.error('Error in updateTask:', err.message);
-    res.status(500).json({ success: false, error: err.message });
+    const errorMsg = err.message || err.code || String(err);
+    console.error('Error in updateTask:', errorMsg);
+    res.status(500).json({ success: false, error: errorMsg });
   }
 };
 
@@ -100,8 +102,9 @@ const deleteTask = async (req, res) => {
 
     res.json({ success: true, message: 'Task deleted successfully', id: parseInt(id, 10) });
   } catch (err) {
-    console.error('Error in deleteTask:', err.message);
-    res.status(500).json({ success: false, error: err.message });
+    const errorMsg = err.message || err.code || String(err);
+    console.error('Error in deleteTask:', errorMsg);
+    res.status(500).json({ success: false, error: errorMsg });
   }
 };
 

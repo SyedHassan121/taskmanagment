@@ -11,7 +11,8 @@ const checkHealth = async (req, res) => {
     await pool.query('SELECT 1 AS health_check');
     dbStatus = 'connected';
   } catch (err) {
-    dbError = err.message;
+    dbError = err.message || err.code || String(err);
+    console.error('❌ Health check DB error:', dbError);
   }
 
   const isHealthy = dbStatus === 'connected';

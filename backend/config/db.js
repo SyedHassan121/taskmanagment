@@ -9,10 +9,14 @@ const sanitize = (val) => {
 };
 
 const getPoolConfig = () => {
-  const connectionUrl = sanitize(process.env.MYSQL_URL) || sanitize(process.env.DATABASE_URL);
+  // Support MYSQL_PRIVATE_URL, MYSQL_URL, and DATABASE_URL
+  const connectionUrl = 
+    sanitize(process.env.MYSQL_PRIVATE_URL) || 
+    sanitize(process.env.MYSQL_URL) || 
+    sanitize(process.env.DATABASE_URL);
 
   if (connectionUrl) {
-    console.log('🔌 Connecting using MySQL connection URL...');
+    console.log('🔌 Connecting using MySQL private/public connection URL...');
     return {
       uri: connectionUrl,
       waitForConnections: true,
