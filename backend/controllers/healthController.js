@@ -7,8 +7,8 @@ const checkHealth = async (req, res) => {
   let dbError = null;
 
   try {
-    const pool = await getPool();
-    await pool.request().query('SELECT 1 AS health_check');
+    const pool = getPool();
+    await pool.query('SELECT 1 AS health_check');
     dbStatus = 'connected';
   } catch (err) {
     dbError = err.message;
@@ -22,7 +22,7 @@ const checkHealth = async (req, res) => {
     timestamp: new Date().toISOString(),
     database: {
       status: dbStatus,
-      engine: 'Microsoft SQL Server',
+      engine: 'MySQL (Railway Live DB)',
       error: dbError,
     },
     environment: process.env.NODE_ENV || 'development',

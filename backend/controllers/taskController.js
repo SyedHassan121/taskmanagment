@@ -1,16 +1,16 @@
-const { sql, getPool } = require('../config/db');
+const { getPool } = require('../config/db');
 
 // @desc    Get all tasks
 // @route   GET /api/tasks
 const getAllTasks = async (req, res) => {
   try {
-    const pool = await getPool();
-    const result = await pool.request().query(`
+    const pool = getPool();
+    const [rows] = await pool.query(`
       SELECT id, title, description, status, priority, created_at 
       FROM tasks 
       ORDER BY created_at DESC
     `);
-    res.json({ success: true, count: result.recordset.length, data: result.recordset });
+    res.json({ success: true, count: rows.length, data: rows });
   } catch (err) {
     console.error('Error in getAllTasks:', err.message);
     res.status(500).json({ success: false, error: err.message });
@@ -27,22 +27,18 @@ const createTask = async (req, res) => {
   }
 
   try {
-    const pool = await getPool();
-    const result = await pool.request()
-      .input('title', sql.NVarChar(255), title.trim())
-      .input('description', sql.NVarChar(sql.MAX), description.trim())
-      .input('priority', sql.NVarChar(50), priority)
-      .input('status', sql.NVarChar(50), status)
-      .query(`
-        INSERT INTO tasks (title, description, priority, status)
-        OUTPUT inserted.id, inserted.title, inserted.description, inserted.status, inserted.priority, inserted.created_at
-        VALUES (@title, @description, @priority, @status);
-      `);
+    const pool = getPool();
+    const [result] = await pool.query(
+      `INSERT INTO tasks (title, description, priority, status) VALUES (?, ?, ?, ?)`,
+      [title.trim(), description.trim(), priority, status]
+    );
+
+    const [newRows] = await pool.query(`SELECT * FROM tasks WHERE id = ?`, [result.insertId]);
 
     res.status(201).json({
       success: true,
       message: 'Task created successfully',
-      data: result.recordset[0],
+      data: newRows[0],
     });
   } catch (err) {
     console.error('Error in createTask:', err.message);
@@ -57,40 +53,31 @@ const updateTask = async (req, res) => {
   const { title, description, status, priority } = req.body;
 
   try {
-    const pool = await getPool();
+    const pool = getPool();
 
     // Check if task exists
-    const checkResult = await pool.request()
-      .input('id', sql.Int, id)
-      .query('SELECT * FROM tasks WHERE id = @id');
-
-    if (checkResult.recordset.length === 0) {
+    const [checkRows] = await pool.query('SELECT * FROM tasks WHERE id = ?', [id]);
+    if (checkRows.length === 0) {
       return res.status(404).json({ success: false, error: 'Task not found' });
     }
 
-    const current = checkResult.recordset[0];
+    const current = checkRows[0];
     const updatedTitle = title !== undefined ? title : current.title;
     const updatedDesc = description !== undefined ? description : current.description;
     const updatedStatus = status !== undefined ? status : current.status;
     const updatedPriority = priority !== undefined ? priority : current.priority;
 
-    const result = await pool.request()
-      .input('id', sql.Int, id)
-      .input('title', sql.NVarChar(255), updatedTitle)
-      .input('description', sql.NVarChar(sql.MAX), updatedDesc)
-      .input('status', sql.NVarChar(50), updatedStatus)
-      .input('priority', sql.NVarChar(50), updatedPriority)
-      .query(`
-        UPDATE tasks 
-        SET title = @title, description = @description, status = @status, priority = @priority
-        OUTPUT inserted.id, inserted.title, inserted.description, inserted.status, inserted.priority, inserted.created_at
-        WHERE id = @id;
-      `);
+    await pool.query(
+      `UPDATE tasks SET title = ?, description = ?, status = ?, priority = ? WHERE id = ?`,
+      [updatedTitle, updatedDesc, updatedStatus, updatedPriority, id]
+    );
+
+    const [updatedRows] = await pool.query('SELECT * FROM tasks WHERE id = ?', [id]);
 
     res.json({
       success: true,
       message: 'Task updated successfully',
-      data: result.recordset[0],
+      data: updatedRows[0],
     });
   } catch (err) {
     console.error('Error in updateTask:', err.message);
@@ -104,12 +91,10 @@ const deleteTask = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const pool = await getPool();
-    const result = await pool.request()
-      .input('id', sql.Int, id)
-      .query('DELETE FROM tasks WHERE id = @id');
+    const pool = getPool();
+    const [result] = await pool.query('DELETE FROM tasks WHERE id = ?', [id]);
 
-    if (result.rowsAffected[0] === 0) {
+    if (result.affectedRows === 0) {
       return res.status(404).json({ success: false, error: 'Task not found' });
     }
 

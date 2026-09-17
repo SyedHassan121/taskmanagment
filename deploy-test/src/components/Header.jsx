@@ -14,7 +14,7 @@ export default function Header({ health, checking, onRefresh }) {
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">TaskFlow</h1>
           <p className="text-xs sm:text-sm text-slate-400">
-            Full-Stack Deployment Project • React + Express + MS SQL Server
+            Full-Stack Deployment Project • React + Express + Live MySQL Database
           </p>
         </div>
       </div>
