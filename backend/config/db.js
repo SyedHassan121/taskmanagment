@@ -1,11 +1,18 @@
 require('dotenv').config();
 const mysql = require('mysql2/promise');
 
-// Build connection configuration (supports full URL or separate variables)
-const getPoolConfig = () => {
-  const connectionUrl = process.env.MYSQL_URL || process.env.DATABASE_URL;
+// Helper to ignore unresolved Railway template strings like ${{...}}
+const sanitize = (val) => {
+  if (!val || typeof val !== 'string') return undefined;
+  if (val.includes('${{')) return undefined;
+  return val.trim();
+};
 
-  if (connectionUrl && !connectionUrl.includes('${{')) {
+const getPoolConfig = () => {
+  const connectionUrl = sanitize(process.env.MYSQL_URL) || sanitize(process.env.DATABASE_URL);
+
+  if (connectionUrl) {
+    console.log('🔌 Connecting using MySQL connection URL...');
     return {
       uri: connectionUrl,
       waitForConnections: true,
@@ -17,12 +24,20 @@ const getPoolConfig = () => {
     };
   }
 
+  const host = sanitize(process.env.MYSQLHOST) || sanitize(process.env.DB_HOST) || 'localhost';
+  const user = sanitize(process.env.MYSQLUSER) || sanitize(process.env.DB_USER) || 'root';
+  const password = sanitize(process.env.MYSQLPASSWORD) || sanitize(process.env.MYSQL_ROOT_PASSWORD) || sanitize(process.env.DB_PASSWORD) || '';
+  const database = sanitize(process.env.MYSQLDATABASE) || sanitize(process.env.MYSQL_DATABASE) || sanitize(process.env.DB_NAME) || 'railway';
+  const port = parseInt(sanitize(process.env.MYSQLPORT) || sanitize(process.env.DB_PORT) || '3306', 10);
+
+  console.log(`🔌 Connecting to MySQL at ${host}:${port} [DB: ${database}, User: ${user}]`);
+
   return {
-    host: process.env.MYSQLHOST || process.env.DB_HOST || process.env.DB_SERVER || 'localhost',
-    user: process.env.MYSQLUSER || process.env.DB_USER || 'root',
-    password: process.env.MYSQLPASSWORD || process.env.MYSQL_ROOT_PASSWORD || process.env.DB_PASSWORD || '',
-    database: process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE || process.env.DB_DATABASE || 'railway',
-    port: parseInt(process.env.MYSQLPORT || process.env.DB_PORT, 10) || 3306,
+    host,
+    user,
+    password,
+    database,
+    port,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
@@ -38,7 +53,6 @@ function getPool() {
   if (!pool) {
     const config = getPoolConfig();
     pool = mysql.createPool(config);
-    console.log(`🔌 Initialized MySQL connection pool for database: ${process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE || 'railway'}`);
   }
   return pool;
 }
